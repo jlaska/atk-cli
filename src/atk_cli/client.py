@@ -271,6 +271,29 @@ class ATKClient:
             finally:
                 browser.close()
 
+    def get_recipe_jsonld(self, path: str) -> dict[str, Any]:
+        """Fetch structured Recipe data from JSON-LD on the recipe page."""
+        import json as _json
+        import re as _re
+        url = f"{BASE_URL}{path}"
+        resp = self._http.get(url, timeout=30.0)
+        resp.raise_for_status()
+        match = _re.search(
+            r'<script type="application/ld\+json">(.*?)</script>',
+            resp.text,
+            _re.DOTALL,
+        )
+        if not match:
+            return {}
+        data = _json.loads(match.group(1))
+        if isinstance(data, list):
+            for item in data:
+                if item.get("@type") == "Recipe":
+                    return item
+        elif isinstance(data, dict) and data.get("@type") == "Recipe":
+            return data
+        return {}
+
     # ── Discovery ──────────────────────────────────────────────────────────────
 
     def get_trending_recipes(self) -> dict[str, Any]:
