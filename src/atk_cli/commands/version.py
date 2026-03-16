@@ -6,7 +6,7 @@ from rich.console import Console
 from .. import __version__
 
 console = Console()
-app = typer.Typer(help="Version and shell completion.")
+app = typer.Typer(help="Version and shell completion.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 @app.callback(invoke_without_command=True)

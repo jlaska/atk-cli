@@ -10,14 +10,25 @@ BASE_URL = "https://www.americastestkitchen.com"
 ALGOLIA_BASE_URL = "https://y1fnzxui30-dsn.algolia.net"
 
 # ── Algolia ──────────────────────────────────────────────────────────────────
-ALGOLIA_APP_ID = "REDACTED_APP_ID"
-ALGOLIA_API_KEY = "REDACTED_API_KEY"
-# Index name captured from HAR — may need refreshing from a new capture if search returns 404
-ALGOLIA_INDEX = "everest_search_atk_production"
+ALGOLIA_INDEX = "everest_search_cortado_production"
 
 # ── Site keys ────────────────────────────────────────────────────────────────
 SITE_KEYS = ["atk", "cio", "cco"]
 DEFAULT_SITE_KEY = "atk"
+
+# ── Content-type URL paths ────────────────────────────────────────────────────
+CONTENT_TYPE_PATHS: dict[str, str] = {
+    "recipe": "recipes",
+    "article": "articles",
+    "equipment_review": "equipment_reviews",
+    "taste_test": "taste_tests",
+    "episode": "episodes",
+}
+
+
+def build_atk_url(slug: str, content_type: str = "recipe") -> str:
+    path_segment = CONTENT_TYPE_PATHS.get(content_type, content_type + "s")
+    return f"https://www.americastestkitchen.com/{path_segment}/{slug}"
 
 # ── Browser headers (required by ATK API) ────────────────────────────────────
 BROWSER_HEADERS: dict[str, str] = {

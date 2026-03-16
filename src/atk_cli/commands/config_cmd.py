@@ -6,12 +6,14 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from .. import algolia
+from .. import auth as auth_mod
 from .. import config as cfg_mod
 from ..constants import DEFAULT_SITE_KEY, SITE_KEYS
-from ..exceptions import ConfigError
+from ..exceptions import ATKError, ConfigError
 
 console = Console()
-app = typer.Typer(help="Manage atk-cli configuration and profiles.")
+app = typer.Typer(help="Manage atk-cli configuration and profiles.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 @app.command("view")
@@ -30,14 +32,25 @@ def view() -> None:
     table.add_column("Site Key")
     table.add_column("Active")
 
+    dirty = False
     for name, profile in profiles.items():
         is_active = "✓" if name == active else ""
-        table.add_row(
-            name,
-            profile.get("email", ""),
-            profile.get("site_key", DEFAULT_SITE_KEY),
-            is_active,
-        )
+        email = profile.get("email", "")
+        if not email:
+            # Backfill from stored JWT so the table isn't empty
+            try:
+                tokens = auth_mod.get_tokens(name)
+                payload = auth_mod._decode_jwt_payload(tokens.get("access_token", ""))
+                email = payload.get("email") or payload.get("sub") or ""
+                if email:
+                    profile["email"] = email
+                    dirty = True
+            except ATKError:
+                pass
+        table.add_row(name, email, profile.get("site_key", DEFAULT_SITE_KEY), is_active)
+
+    if dirty:
+        cfg_mod.save(cfg)
     console.print(table)
 
 
@@ -60,6 +73,19 @@ def use_profile(
         cfg_mod.set_active_profile(name)
         console.print(f"[green]Switched to profile '{name}'.[/green]")
     except ConfigError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(1)
+
+
+@app.command("refresh-algolia")
+def refresh_algolia() -> None:
+    """Re-discover Algolia app ID, API key, and index from americastestkitchen.com."""
+    try:
+        cfg = algolia.get_algolia_config(force_refresh=True, verbose=False)
+        console.print(f"[green]App ID:[/green]    {cfg['app_id']}")
+        console.print(f"[green]API Key:[/green]   {cfg['api_key']}")
+        console.print(f"[green]Index:[/green]     {cfg['index_name']}")
+    except Exception as exc:
         console.print(f"[red]Error:[/red] {exc}")
         raise typer.Exit(1)
 

@@ -9,7 +9,7 @@ from ..client import ATKClient
 from ..exceptions import ATKError
 
 console = Console()
-app = typer.Typer(help="Delete ATK resources.")
+app = typer.Typer(help="Delete ATK resources.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 @app.command()

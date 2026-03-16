@@ -51,7 +51,6 @@ def search_command(
         if "does not exist" in msg:
             console.print(
                 "[yellow]Hint:[/yellow] The Algolia index name may have changed. "
-                "Capture a fresh HAR from americastestkitchen.com and update "
-                "[bold]ALGOLIA_INDEX[/bold] in constants.py."
+                "Run [bold]atk config refresh-index[/bold] to auto-discover the new index."
             )
         raise typer.Exit(1)

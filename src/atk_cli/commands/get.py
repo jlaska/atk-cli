@@ -10,7 +10,7 @@ from ..exceptions import ATKError
 from ..output import render
 
 console = Console()
-app = typer.Typer(help="Fetch ATK resources.")
+app = typer.Typer(help="Fetch ATK resources.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 def _client(ctx: typer.Context) -> ATKClient:

@@ -10,7 +10,7 @@ from ..client import ATKClient
 from ..exceptions import ATKError
 
 console = Console()
-app = typer.Typer(help="Authentication commands.")
+app = typer.Typer(help="Authentication commands.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 @app.command()

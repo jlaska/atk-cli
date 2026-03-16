@@ -9,6 +9,8 @@ from rich.console import Console
 from rich.syntax import Syntax
 from rich.table import Table
 
+from .constants import build_atk_url
+
 console = Console()
 
 # Column definitions per resource type
@@ -74,7 +76,14 @@ def _get(obj: dict[str, Any], key_path: str) -> str:
     if isinstance(val, float):
         return f"{val:.2f}"
     if key_path == "slug" and val:
-        return f"https://www.americastestkitchen.com/{val}"
+        if search_url := obj.get("search_url"):
+            return f"https://www.americastestkitchen.com{search_url}"
+        doc_type = obj.get("document_type") or obj.get("search_document_klass") or "recipe"
+        object_id = obj.get("object_id", "")
+        numeric_id = object_id.split("_")[-1] if "_" in object_id else ""
+        if numeric_id and doc_type != "recipe":
+            return build_atk_url(f"{numeric_id}-{val}", doc_type)
+        return build_atk_url(val, doc_type)
     return str(val)
 
 

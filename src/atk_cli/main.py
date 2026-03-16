@@ -29,6 +29,7 @@ app = typer.Typer(
     help="America's Test Kitchen CLI — kubectl-style access to ATK APIs.",
     no_args_is_help=True,
     rich_markup_mode="rich",
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 
@@ -86,6 +87,10 @@ def login(
             console.print("[red]Login failed: no access token in response.[/red]")
             raise typer.Exit(1)
         save_tokens(access_token, refresh_token, profile)
+        # Persist email into the profile so 'auth status' can display it
+        from . import config as cfg_mod
+        profile_name = profile or cfg_mod.get_active_profile_name()
+        cfg_mod.create_or_update_profile(profile_name, email=email)
         console.print("[green]Logged in successfully.[/green]")
     except ATKError as exc:
         console.print(f"[red]Login failed:[/red] {exc}")

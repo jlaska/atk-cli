@@ -3,6 +3,8 @@
 from typing import Any
 from pydantic import BaseModel, Field
 
+from .constants import build_atk_url
+
 
 class Pagination(BaseModel):
     total_count: int = 0
@@ -26,7 +28,10 @@ class FavoriteResult(BaseModel):
     @property
     def url(self) -> str:
         if self.slug:
-            return f"https://www.americastestkitchen.com/{self.slug}"
+            numeric_id = self.object_id.split("_")[-1] if "_" in self.object_id else ""
+            if numeric_id and self.document_type != "recipe":
+                return build_atk_url(f"{numeric_id}-{self.slug}", self.document_type)
+            return build_atk_url(self.slug, self.document_type)
         return ""
 
 
@@ -45,7 +50,7 @@ class RecentFavorite(BaseModel):
     @property
     def url(self) -> str:
         if self.slug:
-            return f"https://www.americastestkitchen.com/{self.slug}"
+            return build_atk_url(self.slug, "recipe")
         return ""
 
 
@@ -73,12 +78,15 @@ class SearchHit(BaseModel):
     description: str = ""
     search_document_klass: str = ""
     slug: str = ""
+    search_url: str = ""
     avgScore: float | None = None
 
     @property
     def url(self) -> str:
+        if self.search_url:
+            return f"https://www.americastestkitchen.com{self.search_url}"
         if self.slug:
-            return f"https://www.americastestkitchen.com/{self.slug}"
+            return build_atk_url(self.slug, self.search_document_klass)
         return ""
 
 
@@ -91,7 +99,7 @@ class TrendingRecipe(BaseModel):
     @property
     def url(self) -> str:
         if self.slug:
-            return f"https://www.americastestkitchen.com/{self.slug}"
+            return build_atk_url(self.slug, "recipe")
         return ""
 
 

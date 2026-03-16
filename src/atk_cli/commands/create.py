@@ -9,7 +9,7 @@ from ..client import ATKClient
 from ..exceptions import ATKError
 
 console = Console()
-app = typer.Typer(help="Create ATK resources.")
+app = typer.Typer(help="Create ATK resources.", context_settings={"help_option_names": ["-h", "--help"]})
 
 
 @app.command()

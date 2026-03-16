@@ -58,18 +58,21 @@ def clear_tokens(profile: str | None = None) -> None:
     _save_tokens(tokens)
 
 
-def _decode_jwt_exp(token: str) -> int | None:
-    """Decode JWT payload (no verification) and return exp claim or None."""
+def _decode_jwt_payload(token: str) -> dict[str, Any]:
+    """Decode JWT payload (no verification) and return it as a dict."""
     try:
         parts = token.split(".")
         if len(parts) != 3:
-            return None
-        # Add padding
+            return {}
         payload_b64 = parts[1] + "=="
-        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
-        return payload.get("exp")
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
     except Exception:
-        return None
+        return {}
+
+
+def _decode_jwt_exp(token: str) -> int | None:
+    """Return exp claim from JWT payload or None."""
+    return _decode_jwt_payload(token).get("exp")
 
 
 def is_token_expired(token: str, buffer_seconds: int = 60) -> bool:

@@ -4,9 +4,10 @@ from typing import Any
 
 import httpx
 
+from . import algolia
 from . import auth as auth_mod
 from . import config as cfg_mod
-from .constants import ALGOLIA_API_KEY, ALGOLIA_APP_ID, ALGOLIA_BASE_URL, BASE_URL, BROWSER_HEADERS
+from .constants import ALGOLIA_BASE_URL, BASE_URL, BROWSER_HEADERS
 from .exceptions import APIError, AuthenticationError
 
 
@@ -186,8 +187,89 @@ class ATKClient:
 
     # ── Ratings ────────────────────────────────────────────────────────────────
 
+    def get_recipe_detail(self, recipe_id: int | str) -> dict[str, Any]:
+        return self._request("GET", f"/api/v6/recipes/{recipe_id}")
+
+    def get_document_by_object_id(self, object_id: str) -> dict[str, Any]:
+        """Fetch a document from the Algolia index by its objectID (e.g. 'equipment_review_2639')."""
+        cfg = algolia.get_algolia_config(verbose=self._verbose)
+        url = f"{ALGOLIA_BASE_URL}/1/indexes/{cfg['index_name']}/{object_id}"
+        headers = {
+            "X-Algolia-Application-Id": cfg["app_id"],
+            "X-Algolia-API-Key": cfg["api_key"],
+        }
+        resp = httpx.get(url, headers=headers, timeout=15.0)
+        if not resp.is_success:
+            raise APIError(
+                f"Algolia error {resp.status_code}: {resp.text[:200]}",
+                status_code=resp.status_code,
+            )
+        return resp.json()
+
     def get_recipe_rating(self, recipe_id: int | str) -> dict[str, Any]:
         return self._request("GET", f"/api/v6/ratings/recipe/{recipe_id}")
+
+    def export_recipe_pdf(self, slug: str, output_path: "Path") -> None:
+        """Render the ATK recipe /print page to a PDF via Playwright.
+
+        Uses the dedicated /print URL which has ATK's clean print layout.
+        The cookie consent banner is suppressed via the OptanonAlertBoxClosed
+        cookie so it never appears in the rendered output.
+        """
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            from .exceptions import ATKError
+            raise ATKError(
+                "PDF export requires playwright. "
+                "Install with: pip install 'atk-cli[pdf]' && playwright install chromium"
+            )
+
+        access_token = self._ensure_auth()
+
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            try:
+                context = browser.new_context()
+                import datetime
+                consent_date = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                context.add_cookies([
+                    # Auth
+                    {
+                        "name": "user_token",
+                        "value": access_token,
+                        "domain": ".americastestkitchen.com",
+                        "path": "/",
+                    },
+                    {
+                        "name": "anonymous",
+                        "value": "false",
+                        "domain": ".americastestkitchen.com",
+                        "path": "/",
+                    },
+                    # Suppress OneTrust cookie-consent banner
+                    {
+                        "name": "OptanonAlertBoxClosed",
+                        "value": consent_date,
+                        "domain": ".americastestkitchen.com",
+                        "path": "/",
+                    },
+                    {
+                        "name": "OptanonConsent",
+                        "value": "isGpcEnabled=0&datestamp=" + consent_date + "&version=202209.1.0&isIABGlobal=false&hosts=&consentId=suppressed&interactionCount=1&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1&AwaitingReconsent=false",
+                        "domain": ".americastestkitchen.com",
+                        "path": "/",
+                    },
+                ])
+                page = context.new_page()
+                page.goto(
+                    f"{BASE_URL}/recipes/{slug}/print",
+                    wait_until="networkidle",
+                    timeout=60_000,
+                )
+                page.pdf(path=str(output_path), format="Letter")
+            finally:
+                browser.close()
 
     # ── Discovery ──────────────────────────────────────────────────────────────
 
@@ -203,17 +285,18 @@ class ATKClient:
         page: int = 0,
         hits_per_page: int = 20,
     ) -> dict[str, Any]:
+        cfg = algolia.get_algolia_config(verbose=self._verbose)
         url = f"{ALGOLIA_BASE_URL}/1/indexes/*/queries"
         headers = {
-            "X-Algolia-Application-Id": ALGOLIA_APP_ID,
-            "X-Algolia-API-Key": ALGOLIA_API_KEY,
+            "X-Algolia-Application-Id": cfg["app_id"],
+            "X-Algolia-API-Key": cfg["api_key"],
             "Content-Type": "application/json",
         }
         facet_filter = f"search_document_klass:{search_type}" if search_type else ""
         request_body = {
             "requests": [
                 {
-                    "indexName": "everest_search_atk_production",
+                    "indexName": cfg["index_name"],
                     "params": (
                         f"query={query}&page={page}&hitsPerPage={hits_per_page}"
                         + (f"&facetFilters={facet_filter}" if facet_filter else "")

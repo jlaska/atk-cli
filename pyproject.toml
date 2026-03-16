@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "atk-cli"
 version = "0.1.0"
-description = "kubectl-inspired CLI for America's Test Kitchen API"
+description = "kubectl inspired CLI for America's Test Kitchen API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,6 +16,9 @@ dependencies = [
     "pyyaml>=6.0.1",
     "jsonpath-ng>=1.6.1",
 ]
+
+[project.optional-dependencies]
+pdf = ["playwright>=1.40.0"]
 
 [project.scripts]
 atk = "atk_cli.main:app"
