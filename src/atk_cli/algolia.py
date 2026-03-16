@@ -19,6 +19,9 @@ DEFAULT_TTL_DAYS = 7
 _INDEX_PATTERN = re.compile(r"everest_search_[a-z_]+_production")
 _APP_ID_PATTERN = re.compile(r'"applicationId"\s*:\s*"([A-Z0-9]{8,12})"')
 _API_KEY_PATTERN = re.compile(r'"apiKey"\s*:\s*"([a-f0-9]{32})"')
+# Pattern for algoliasearch lite client init in JS chunks: ("APP_ID","api_key_hex")
+_JS_CREDS_PATTERN = re.compile(r'\("([A-Z0-9]{10})"\s*,\s*"([a-f0-9]{32})"\)')
+_CHUNK_URL_PATTERN = re.compile(r'src="(cortado-assets/_next/static/chunks/[^"]+\.js)"')
 
 
 def discover_algolia_config() -> dict:
@@ -39,10 +42,34 @@ def discover_algolia_config() -> dict:
     app_id_matches = _APP_ID_PATTERN.findall(text)
     api_key_matches = _API_KEY_PATTERN.findall(text)
 
+    app_id = app_id_matches[0] if app_id_matches else None
+    api_key = api_key_matches[0] if api_key_matches else None
+
+    # If credentials not in HTML, search JS chunks
+    if not app_id or not api_key:
+        chunk_urls = _CHUNK_URL_PATTERN.findall(text)
+        # Prioritize layout chunks (most likely to contain Algolia client init)
+        chunk_urls.sort(key=lambda u: (0 if "layout" in u else 1))
+        for chunk_path in chunk_urls:
+            try:
+                chunk_resp = httpx.get(
+                    f"{BASE_URL}/{chunk_path}",
+                    headers=BROWSER_HEADERS,
+                    follow_redirects=True,
+                    timeout=10.0,
+                )
+                chunk_resp.raise_for_status()
+                js_matches = _JS_CREDS_PATTERN.findall(chunk_resp.text)
+                if js_matches:
+                    app_id, api_key = js_matches[0]
+                    break
+            except Exception:
+                continue
+
     return {
         "index_name": index_matches[0],
-        "app_id": app_id_matches[0] if app_id_matches else None,
-        "api_key": api_key_matches[0] if api_key_matches else None,
+        "app_id": app_id,
+        "api_key": api_key,
     }
 
 
