@@ -29,10 +29,10 @@ atk search "chicken tikka masala"
 atk get favorites
 
 # Describe a recipe
-atk describe recipe perfect-scrambled-eggs
+atk describe recipe 12345
 
-# Export a recipe to PDF
-atk describe recipe perfect-scrambled-eggs --pdf ~/recipes/scrambled-eggs.pdf
+# Export a recipe to PDF (saves to <slug>.pdf in current directory)
+atk describe recipe 12345 -o pdf
 ```
 
 ## Commands
