@@ -1,5 +1,7 @@
 # atk-cli
 
+[![tests](https://github.com/jlaska/atk-cli/actions/workflows/test.yml/badge.svg)](https://github.com/jlaska/atk-cli/actions/workflows/test.yml)
+
 A `kubectl`-inspired CLI for [America's Test Kitchen](https://www.americastestkitchen.com). Browse
 recipes, manage favorites, and export content — all from the terminal.
 

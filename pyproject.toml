@@ -19,12 +19,28 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["playwright>=1.40.0"]
+test = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "respx>=0.21",
+]
 
 [project.scripts]
 atk = "atk_cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/atk_cli"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["--strict-markers", "--strict-config", "-ra", "--tb=short"]
+
+[tool.coverage.run]
+source = ["atk_cli"]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 100
