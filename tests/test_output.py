@@ -165,3 +165,59 @@ def test_render_unknown_format(out):
     render([{"title": "Fallback"}], fmt="unknown_format")
     combined = "\n".join(printed)
     assert "Fallback" in combined
+
+
+# ── _get edge cases ───────────────────────────────────────────────────────────
+
+def test_get_nested_non_dict():
+    """Traversal through a non-dict value returns empty string."""
+    assert _get({"a": "string"}, "a.b") == ""
+
+
+def test_get_slug_non_recipe_url():
+    """Slug for non-recipe doc type with object_id builds {id}-{slug} URL."""
+    obj = {
+        "slug": "best-blender",
+        "document_type": "equipment_review",
+        "object_id": "equipment_review_456",
+    }
+    result = _get(obj, "slug")
+    assert "456-best-blender" in result
+    assert "americastestkitchen.com" in result
+
+
+# ── _render_jsonpath ──────────────────────────────────────────────────────────
+
+def test_render_jsonpath_single(out):
+    """JSONPath matching a single value prints the value directly."""
+    jsonpath_ng = pytest.importorskip("jsonpath_ng")
+    buf, printed = out
+    render({"title": "Soup"}, fmt="jsonpath=title")
+    assert "Soup" in "\n".join(printed)
+
+
+def test_render_jsonpath_multi(out):
+    """JSONPath matching multiple values prints the list."""
+    jsonpath_ng = pytest.importorskip("jsonpath_ng")
+    buf, printed = out
+    render([{"t": "A"}, {"t": "B"}], fmt="jsonpath=[*].t")
+    combined = "\n".join(printed)
+    assert "A" in combined
+    assert "B" in combined
+
+
+def test_render_jsonpath_import_error(out, monkeypatch):
+    """Missing jsonpath-ng prints an installation hint."""
+    import sys
+    buf, printed = out
+    monkeypatch.setitem(sys.modules, "jsonpath_ng.ext", None)
+    render({"title": "Test"}, fmt="jsonpath=title")
+    assert "not installed" in buf.getvalue()
+
+
+def test_render_jsonpath_bad_expr(out):
+    """Invalid JSONPath expression prints an error message."""
+    pytest.importorskip("jsonpath_ng")
+    buf, printed = out
+    render({"title": "Test"}, fmt="jsonpath=[invalid{{")
+    assert "JSONPath error" in buf.getvalue()

@@ -180,3 +180,135 @@ def test_describe_recipe_strips_recipe_prefix(runner):
         _mock_rest_success(mock)
         result = runner.invoke(app, ["describe", "recipe", "recipe_123"])
     assert result.exit_code == 0
+
+
+# ── Document subcommands ──────────────────────────────────────────────────────
+
+ALGOLIA_DOC_WITH_EXTRAS = {
+    "objectID": "equipment_review_456",
+    "title": "Best Blender",
+    "slug": "best-blender",
+    "description": "A great blender for all your needs.",
+    "search_published_date": "20230115",
+    "search_author": ["Jane Smith"],
+    "search_stickers": ["Editor's Choice"],
+    "search_facet_keywords": ["blender", "kitchen"],
+    "search_atk_buy_now_link": "https://example.com/buy/blender",
+    "search_url": "/equipment_reviews/best-blender",
+}
+
+_DOC_BASE = f"{ALGOLIA_BASE}/1/indexes/{INDEX}"
+
+
+def test_describe_equipment_review_table(runner):
+    """equipment-review table shows keywords, stickers, and buy-link rows."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/equipment_review_456").mock(
+            return_value=httpx.Response(200, json=ALGOLIA_DOC_WITH_EXTRAS)
+        )
+        result = runner.invoke(app, ["describe", "equipment-review", "456"])
+    assert result.exit_code == 0
+
+
+def test_describe_equipment_review_json(runner):
+    """-o json renders JSON output for equipment-review."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/equipment_review_456").mock(
+            return_value=httpx.Response(200, json=ALGOLIA_DOC_WITH_EXTRAS)
+        )
+        result = runner.invoke(app, ["describe", "equipment-review", "456", "-o", "json"])
+    assert result.exit_code == 0
+
+
+def test_describe_article_table(runner):
+    """article subcommand resolves to article_{id} Algolia object."""
+    doc = {"objectID": "article_789", "title": "Test Article", "slug": "test-article"}
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/article_789").mock(
+            return_value=httpx.Response(200, json=doc)
+        )
+        result = runner.invoke(app, ["describe", "article", "789"])
+    assert result.exit_code == 0
+
+
+def test_describe_taste_test_table(runner):
+    """taste-test subcommand resolves to taste_test_{id} Algolia object."""
+    doc = {"objectID": "taste_test_111", "title": "Best Butter", "slug": "best-butter"}
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/taste_test_111").mock(
+            return_value=httpx.Response(200, json=doc)
+        )
+        result = runner.invoke(app, ["describe", "taste-test", "111"])
+    assert result.exit_code == 0
+
+
+def test_describe_episode_table(runner):
+    """episode subcommand resolves to episode_{id} Algolia object."""
+    doc = {"objectID": "episode_222", "title": "Season 24 Ep 1", "slug": "s24-ep1"}
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/episode_222").mock(
+            return_value=httpx.Response(200, json=doc)
+        )
+        result = runner.invoke(app, ["describe", "episode", "222"])
+    assert result.exit_code == 0
+
+
+def test_describe_document_error(runner):
+    """Algolia 500 for a document subcommand exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{_DOC_BASE}/equipment_review_456").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        result = runner.invoke(app, ["describe", "equipment-review", "456"])
+    assert result.exit_code == 1
+
+
+# ── Collection subcommand ─────────────────────────────────────────────────────
+
+_COLLECTIONS_META = {
+    "data": {
+        "collections": [
+            {"id": 1, "slug": "my-collection", "name": "My Collection"},
+        ]
+    }
+}
+
+
+def test_describe_collection_by_slug(runner):
+    """Describe collection matched by slug."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v6/user_favorites_meta_data").mock(
+            return_value=httpx.Response(200, json=_COLLECTIONS_META)
+        )
+        result = runner.invoke(app, ["describe", "collection", "my-collection"])
+    assert result.exit_code == 0
+
+
+def test_describe_collection_by_id(runner):
+    """Describe collection matched by numeric string id."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v6/user_favorites_meta_data").mock(
+            return_value=httpx.Response(200, json=_COLLECTIONS_META)
+        )
+        result = runner.invoke(app, ["describe", "collection", "1"])
+    assert result.exit_code == 0
+
+
+def test_describe_collection_not_found(runner):
+    """Describe collection with unknown slug exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v6/user_favorites_meta_data").mock(
+            return_value=httpx.Response(200, json=_COLLECTIONS_META)
+        )
+        result = runner.invoke(app, ["describe", "collection", "nonexistent"])
+    assert result.exit_code == 1
+
+
+def test_describe_collection_api_error(runner):
+    """Collections metadata API 500 exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v6/user_favorites_meta_data").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        result = runner.invoke(app, ["describe", "collection", "my-collection"])
+    assert result.exit_code == 1

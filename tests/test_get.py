@@ -138,3 +138,53 @@ def test_favorites_api_error(runner):
         )
         result = runner.invoke(app, ["get", "favorites"])
     assert result.exit_code == 1
+
+
+def test_collections_api_error(runner):
+    """Collections API 500 exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v6/user_favorites_meta_data").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        result = runner.invoke(app, ["get", "collections"])
+    assert result.exit_code == 1
+
+
+def test_trending_list_response(runner):
+    """Trending returns bare list — should render as rows."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/cortado/trending-recipes").mock(
+            return_value=httpx.Response(200, json=[{"title": "Trending Recipe"}])
+        )
+        result = runner.invoke(app, ["get", "trending"])
+    assert result.exit_code == 0
+
+
+def test_trending_scalar_response(runner):
+    """Trending returns a non-dict, non-list value — wrapped in list."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/cortado/trending-recipes").mock(
+            return_value=httpx.Response(200, json="unexpected-scalar")
+        )
+        result = runner.invoke(app, ["get", "trending"])
+    assert result.exit_code == 0
+
+
+def test_trending_api_error(runner):
+    """Trending API 500 exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/cortado/trending-recipes").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        result = runner.invoke(app, ["get", "trending"])
+    assert result.exit_code == 1
+
+
+def test_subscription_api_error(runner):
+    """Subscription API 500 exits with code 1."""
+    with respx.mock(assert_all_called=False) as mock:
+        mock.get(f"{BASE}/api/v8/cds_core/customer_summaries").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        result = runner.invoke(app, ["get", "subscription"])
+    assert result.exit_code == 1
